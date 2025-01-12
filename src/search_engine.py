@@ -1,5 +1,6 @@
 import json
 import math
+import pandas as pd
 
 def load_inverted_index(file_path):
     with open(file_path, "r") as file:
@@ -48,8 +49,14 @@ def rank_results(query_tokens, results, inverted_index, total_docs, doc_lengths)
 if __name__ == "__main__":
     # Φόρτωσε το ανεστραμμένο ευρετήριο
     inverted_index = load_inverted_index("data/inverted_index.json")
-    total_docs = len(inverted_index)
-    doc_lengths = {doc_id: len(content.split()) for doc_id, content in enumerate(inverted_index.values())}
+
+    # Φόρτωσε τα δεδομένα των εγγράφων
+    df = pd.read_csv("data/cleaned_wikipedia_articles.csv")
+
+    # Υπολόγισε το μήκος κάθε εγγράφου
+    doc_lengths = {doc_id: len(content.split()) for doc_id, content in enumerate(df['processed_content'])}
+
+    total_docs = len(df)
 
     # Ερώτημα Χρήστη
     query = input("Εισάγετε το ερώτημά σας: ")
