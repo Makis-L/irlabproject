@@ -1,59 +1,55 @@
-import pandas as pd
+import json
 import re
-from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize
+from nltk.stem import PorterStemmer
 import nltk
 
-# Κατέβασε τα απαραίτητα δεδομένα NLTK (μία φορά)
+# Κατέβασμα απαραίτητων δεδομένων του NLTK
 nltk.download('punkt')
 nltk.download('stopwords')
-nltk.download('wordnet')
 
-# Ορισμός εξατομικευμένων stopwords
-custom_stopwords = set(stopwords.words('english')).union({"ml", "ai", "data"})
+# Αρχικοποίηση των εργαλείων
+stop_words = set(stopwords.words("english"))
+stemmer = PorterStemmer()
 
+# Συνάρτηση για καθαρισμό και επεξεργασία κειμένου
 def preprocess_text(text):
-    # Έλεγχος αν το κείμενο είναι έγκυρο
-    if not isinstance(text, str) or len(text) < 10:
-        return ""
     
-    # Κανονικοποίηση (lowercase)
+    # Μετατροπή σε πεζά
     text = text.lower()
-
-    # Αφαίρεση ειδικών χαρακτήρων
-    text = re.sub(r'[^a-zA-Z\s]', '', text)
-
+    # Αφαίρεση ειδικών χαρακτήρων και αριθμών
+    text = re.sub(r"[^a-z\s]", "", text)
     # Tokenization
     tokens = word_tokenize(text)
-
     # Αφαίρεση stopwords
-    tokens = [word for word in tokens if word not in custom_stopwords]
+    filtered_tokens = [word for word in tokens if word not in stop_words]
+    # Stemming
+    stemmed_tokens = [stemmer.stem(word) for word in filtered_tokens]
+    return " ".join(stemmed_tokens)
 
-    # Lemmatization
-    lemmatizer = WordNetLemmatizer()
-    tokens = [lemmatizer.lemmatize(word) for word in tokens]
+# Φόρτωση των δεδομένων από το JSON αρχείο
+def load_articles(file_path):
 
-    # Επανασύνδεση tokens σε κείμενο
-    return ' '.join(tokens)
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+# Αποθήκευση δεδομένων σε JSON αρχείο
+def save_articles(articles, file_path):
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump(articles, f, ensure_ascii=False, indent=4)
+
+# Κύρια συνάρτηση προεπεξεργασίας
+def preprocess_articles(input_file, output_file):
+
+    articles = load_articles(input_file)
+    for article in articles:
+        article["processed_content"] = preprocess_text(article["content"])
+    save_articles(articles, output_file)
+    print(f"Η προεπεξεργασία ολοκληρώθηκε! Τα δεδομένα αποθηκεύτηκαν στο {output_file}")
 
 if __name__ == "__main__":
-    # Φόρτωση δεδομένων
-    input_file = "data/wikipedia_articles.csv"
-    output_file = "data/cleaned_wikipedia_articles.csv"
-
-    try:
-        df = pd.read_csv(input_file)
-    except FileNotFoundError:
-        print(f"Το αρχείο {input_file} δεν βρέθηκε.")
-        exit()
-
-    # Εφαρμογή προεπεξεργασίας
-    df['processed_content'] = df['content'].apply(preprocess_text)
-
-    # Αφαίρεση κενών εγγραφών
-    df = df[df['processed_content'] != ""]
-
-    # Αποθήκευση δεδομένων
-    df.to_csv(output_file, index=False)
-    print(f"Η προεπεξεργασία ολοκληρώθηκε. Τα δεδομένα αποθηκεύτηκαν στο {output_file}")
+    input_file = "data/wikipedia_articles.json"
+    output_file = "data/cleaned_wikipedia_articles.json"
+    preprocess_articles(input_file, output_file)
